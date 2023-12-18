@@ -8,12 +8,12 @@ from basicts.runners import SimpleTimeSeriesForecastingRunner
 from basicts.data import TimeSeriesForecastingDataset
 from basicts.metrics import masked_mse, masked_mae
 
-from .arch import Autoformer
+from .arch import Corrformer
 
 CFG = EasyDict()
 
 # ================= general ================= #
-CFG.DESCRIPTION = "Autoformer model configuration"
+CFG.DESCRIPTION = "Corrformer model configuration"
 CFG.RUNNER = SimpleTimeSeriesForecastingRunner
 CFG.DATASET_CLS = TimeSeriesForecastingDataset
 CFG.DATASET_NAME = "Electricity"
@@ -31,25 +31,32 @@ CFG.ENV.CUDNN.ENABLED = True
 
 # ================= model ================= #
 CFG.MODEL = EasyDict()
-CFG.MODEL.NAME = "Autoformer"
-CFG.MODEL.ARCH = Autoformer
+CFG.MODEL.NAME = "Corrformer"
+CFG.MODEL.ARCH = Corrformer
 NUM_NODES = 321
+NUM_Variable = 107
 CFG.MODEL.PARAM = EasyDict(
     {
-    "enc_in": NUM_NODES,                        # num nodes
-    "dec_in": NUM_NODES,
-    "c_out": NUM_NODES,
+    "enc_in": NUM_Variable//NUM_NODES,
+    "dec_in": NUM_Variable//NUM_NODES,
+    "c_out":  NUM_Variable//NUM_NODES,
     "seq_len": CFG.DATASET_INPUT_LEN,
-    "label_len": CFG.DATASET_INPUT_LEN/2,       # start token length used in decoder
+    "label_len": CFG.DATASET_INPUT_LEN//2,       # start token length used in decoder
     "pred_len": CFG.DATASET_OUTPUT_LEN,         # prediction sequence length
-    "factor": 3,                                # attn factor
-    "d_model": 512,
+    "factor_temporal": 1,                       # attn factor
+    "factor_spatial": 1,                        # attn factor
+    "d_model": 16,
     "moving_avg": 25,                           # window size of moving average. This is a CRUCIAL hyper-parameter.
     "n_heads": 8,
     "e_layers": 2,                              # num of encoder layers
     "d_layers": 1,                              # num of decoder layers
-    "d_ff": 2048,
+    "d_ff": 32,
     "dropout": 0.05,
+    "variable_num": NUM_Variable,
+    "node_num":  NUM_NODES,                   # num nodes
+    "node_list": [1,107],
+    "enc_tcn_layers":1,
+    "dec_tcn_layers":1,
     "output_attention": False,
     "embed": "timeF",                           # [timeF, fixed, learned]
     "activation": "gelu",
@@ -69,7 +76,8 @@ CFG.TRAIN.LOSS = masked_mae
 CFG.TRAIN.OPTIM = EasyDict()
 CFG.TRAIN.OPTIM.TYPE = "Adam"
 CFG.TRAIN.OPTIM.PARAM = {
-    "lr": 0.0001
+    "lr": 0.0002,
+    "weight_decay": 0.0001,
 }
 
 # ================= train ================= #
@@ -83,10 +91,10 @@ CFG.TRAIN.DATA = EasyDict()
 # read data
 CFG.TRAIN.DATA.DIR = "datasets/" + CFG.DATASET_NAME
 # dataloader args, optional
-CFG.TRAIN.DATA.BATCH_SIZE = 64
+CFG.TRAIN.DATA.BATCH_SIZE = 16
 CFG.TRAIN.DATA.PREFETCH = False
 CFG.TRAIN.DATA.SHUFFLE = True
-CFG.TRAIN.DATA.NUM_WORKERS = 10
+CFG.TRAIN.DATA.NUM_WORKERS = 2
 CFG.TRAIN.DATA.PIN_MEMORY = False
 
 # ================= validate ================= #
@@ -97,7 +105,7 @@ CFG.VAL.DATA = EasyDict()
 # read data
 CFG.VAL.DATA.DIR = "datasets/" + CFG.DATASET_NAME
 # dataloader args, optional
-CFG.VAL.DATA.BATCH_SIZE = 64
+CFG.VAL.DATA.BATCH_SIZE = 32
 CFG.VAL.DATA.PREFETCH = False
 CFG.VAL.DATA.SHUFFLE = False
 CFG.VAL.DATA.NUM_WORKERS = 2
@@ -111,7 +119,7 @@ CFG.TEST.DATA = EasyDict()
 # read data
 CFG.TEST.DATA.DIR = "datasets/" + CFG.DATASET_NAME
 # dataloader args, optional
-CFG.TEST.DATA.BATCH_SIZE = 64
+CFG.TEST.DATA.BATCH_SIZE = 16
 CFG.TEST.DATA.PREFETCH = False
 CFG.TEST.DATA.SHUFFLE = False
 CFG.TEST.DATA.NUM_WORKERS = 2
@@ -120,3 +128,4 @@ CFG.TEST.DATA.PIN_MEMORY = False
 # ================= evaluate ================= #
 CFG.EVAL = EasyDict()
 CFG.EVAL.HORIZONS = [12, 24, 48, 96, 192, 288, 336]
+
