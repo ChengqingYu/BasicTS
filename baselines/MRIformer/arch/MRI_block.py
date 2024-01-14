@@ -62,17 +62,18 @@ class ASI_block_att(nn.Module):
 class MRI_block_att(nn.Module):
     def __init__(self,Input_len, num_id, num_hi, num_head,dropout,IF_Chanel):
         super(MRI_block_att, self).__init__()
-        ###
+        ### Sequence length
         self.embed = nn.Linear(1, num_hi)
         self.len_2 = Input_len //2
         self.len_3 = Input_len //4
         self.IF_Chanel = IF_Chanel
-        ###ASI_block参数定义
+        
+        ###ASI_block
         self.ASI_1 = ASI_block_att(Input_len, num_id, num_hi, num_head,dropout,IF_Chanel)
         self.ASI_2 = ASI_block_att(self.len_2, num_id, num_hi, num_head,dropout,IF_Chanel)
         self.ASI_3 = ASI_block_att(self.len_3, num_id, num_hi, num_head,dropout,IF_Chanel)
 
-        ###结果融合
+        ### Result fusion
         self.Time_att = Time_att(Input_len,num_head,dropout)
         self.laynorm = nn.LayerNorm([num_id,num_hi,Input_len])
         self.dropout = nn.Dropout(dropout)
